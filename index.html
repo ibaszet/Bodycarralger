@@ -39,7 +39,7 @@ nav{
   border-bottom:1px solid var(--border);
   box-shadow:0 1px 20px rgba(0,0,0,0.3);
 }
-.nav-logo img{height:40px;max-height:40px;width:auto;max-width:140px;object-fit:contain;display:block;}
+
 .nav-links{display:flex;gap:32px;list-style:none;}
 .nav-links a{
   font-size:13px;font-weight:500;letter-spacing:.3px;
@@ -414,13 +414,14 @@ footer img{height:28px;max-height:28px;width:auto;max-width:100px;object-fit:con
   .info-inner{grid-template-columns:1fr;gap:40px;}
   footer{padding:20px 24px;justify-content:center;text-align:center;}
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
 <!-- NAV -->
 <nav>
-  <img src="logo.jpg" alt="BodyCare Logo">
+
   <ul class="nav-links">
     <li><a href="#about">À propos</a></li>
     <li><a href="#services">Services</a></li>
@@ -483,7 +484,7 @@ footer img{height:28px;max-height:28px;width:auto;max-width:100px;object-fit:con
       <p class="about-text">Notre approche est personnalisée : chaque séance est adaptée à votre corps, vos besoins et vos objectifs — qu'il s'agisse de soulager une douleur, de réduire le stress ou simplement de prendre soin de vous.</p>
     </div>
     <div class="about-card reveal">
-      <img class="about-card-logo" src="logo.jpg" alt="BodyCare Logo">
+
       <div class="about-name">Hamedane Hamza</div>
       <div class="about-role">Massothérapeute Certifié</div>
       <div class="about-divider"></div>
@@ -705,13 +706,13 @@ footer img{height:28px;max-height:28px;width:auto;max-width:100px;object-fit:con
 <script>
 // ── Firebase init ──
 firebase.initializeApp({
-  apiKey:            "AIzaSyBF4XH88YKePJlPppeyWmqtUtjMETk64M0",
-  authDomain:        "barber-haithem.firebaseapp.com",
-  databaseURL:       "https://barber-haithem-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId:         "barber-haithem",
-  storageBucket:     "barber-haithem.firebasestorage.app",
-  messagingSenderId: "895304335588",
-  appId:             "1:895304335588:web:68703141cbf6407d2c2cf1"
+  apiKey:            "AIzaSyCdlVz8CR23uSvOhX2WTMjWAWX4yDk3zds",
+  authDomain:        "bodycare-alger.firebaseapp.com",
+  databaseURL:       "https://bodycare-alger-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "bodycare-alger",
+  storageBucket:     "bodycare-alger.firebasestorage.app",
+  messagingSenderId: "599106524056",
+  appId:             "1:599106524056:web:5f312c60f6d81d4ee591ed"
 });
 const db = firebase.database();
 
@@ -722,6 +723,12 @@ const observer = new IntersectionObserver(
 );
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
+// ── Validation ──
+function validatePhone(phone) {
+  const cleaned = phone.replace(/[\s\-\.\(\)]/g, '');
+  return /^(0|213|\+213)[5-7]\d{8}$/.test(cleaned);
+}
+
 // ── Booking ──
 async function sendBooking() {
   const name    = document.getElementById('f-name').value.trim();
@@ -730,52 +737,59 @@ async function sendBooking() {
   const date    = document.getElementById('f-date').value;
   const time    = document.getElementById('f-time').value;
 
-  if (!name || !phone || !service) {
-    showFormError('Veuillez remplir les champs obligatoires (nom, téléphone, service).');
-    return;
+  // ── Validation ──
+  if (!name || name.length < 2) {
+    showFormError('Veuillez entrer votre nom complet.'); return;
+  }
+  const phoneClean = phone.replace(/[\s\-\.]/g, '');
+  if (!phoneClean || !/^(0|213|\+213)[5-7]\d{8}$/.test(phoneClean)) {
+    showFormError('Numéro de téléphone invalide (ex: 0662 50 05 42)'); return;
+  }
+  if (!service) {
+    showFormError('Veuillez choisir un service.'); return;
   }
 
-  // Désactive le bouton pendant l'envoi
+  // ── Loading ──
   const btn = document.querySelector('.btn-book');
   btn.disabled = true;
-  btn.textContent = 'Envoi en cours...';
+  btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;">'
+    + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin .8s linear infinite"><path d="M12 2a10 10 0 1 0 10 10" stroke-linecap="round"/></svg>'
+    + 'Envoi en cours...</span>';
 
   const booking = {
-    id:        Date.now().toString(),
+    id:          Date.now().toString(),
     name,
-    phone,
+    phone:       phoneClean,
     service,
-    date:      date || '',
-    time:      time || '',
-    appointment: (date ? date : '') + (time ? ' à ' + time : ''),
-    status:    'new',
-    source:    'website',
-    createdAt: Date.now()
+    date:        date || '',
+    time:        time || '',
+    appointment: (date || '') + (time ? ' à ' + time : ''),
+    status:      'new',
+    source:      'website',
+    createdAt:   Date.now()
   };
 
   try {
-    // 1. Écriture dans Firebase
+    // 1. Firebase
     await db.ref('bodycare_alger/bookings/' + booking.id).set(booking);
 
-    // 2. Affiche confirmation sur la page
+    // 2. Succès
     showSuccess(name);
 
-    // 3. Ouvre WhatsApp en parallèle (confirmation au client)
+    // 3. WhatsApp
     const msg = encodeURIComponent(
-      "Bonjour " + name + " \n\n" +
-      "Votre demande de RDV chez BodyCare Alger a bien été reçue !\n" +
-      "Service : " + service + "\n" +
-      (date ? "Date : " + date + (time ? " à " + time : "") + "\n" : "") +
-      "\nNous vous confirmons votre rendez-vous très prochainement.\nMerci !"
+      "Bonjour " + name + "\n\n"
+      + "Votre demande de RDV chez BodyCare Alger a bien été reçue !\n"
+      + "Service : " + service + "\n"
+      + (date ? "Date : " + date + (time ? " à " + time : "") + "\n" : "")
+      + "\nNous vous confirmons très prochainement.\nMerci !"
     );
-    setTimeout(() => {
-      window.open("https://wa.me/213662500542?text=" + msg, "_blank");
-    }, 800);
+    setTimeout(() => window.open("https://wa.me/213662500542?text=" + msg, "_blank"), 600);
 
   } catch(err) {
     console.error(err);
     btn.disabled = false;
-    btn.textContent = 'Envoyer la demande de RDV via WhatsApp';
+    btn.innerHTML = 'Envoyer la demande de RDV via WhatsApp';
     showFormError('Erreur de connexion. Veuillez réessayer.');
   }
 }

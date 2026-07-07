@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BodyCare — Gestion des Réservations</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:   #1E3A5F;
+  --blue2:  #162D4A;
+  --blue3:  #0F2035;
+  --teal:   #2CBFAE;
+  --teal-lt:#4DD4C5;
+  --gold:   #C8A45D;
+  --gold-lt:#DDB96E;
+  --bg:     #0D1117;
+  --bg2:    #111820;
+  --bg3:    #161E28;
+  --bg4:    #1C2535;
+  --text:   #E8EDF2;
+  --gray:   #8B95A1;
+  --gray-lt:#5A6370;
+  --border: rgba(44,191,174,0.12);
+  --red:    #E05555;
+  --green:  #2CBFAE;
+  --white:  #F0F4F8;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;}
+
+/* ══ LOCK SCREEN ══ */
+#lockScreen{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg3);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:28px;padding:32px;
+}
+.lock-logo{height:72px;object-fit:contain;margin-bottom:8px;}
+.lock-title{
+  font-family:'Playfair Display',serif;
+  font-size:28px;font-weight:700;color:var(--white);text-align:center;
+}
+.lock-sub{font-size:13px;color:var(--gray);letter-spacing:1px;text-align:center;}
+.lock-form{width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px;}
+.lock-input{
+  width:100%;background:var(--bg2);
+  border:1.5px solid var(--border);border-radius:10px;
+  padding:15px 18px;color:var(--white);
+  font-family:'Inter',sans-serif;font-size:16px;
+  text-align:center;letter-spacing:4px;outline:none;
+  transition:border-color .2s;
+}
+.lock-input:focus{border-color:var(--teal);}
+.lock-input::placeholder{letter-spacing:2px;color:var(--gray-lt);}
+.lock-err{
+  display:none;color:var(--red);
+  font-size:12px;text-align:center;font-weight:600;
+}
+.lock-btn{
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,var(--teal),var(--teal-lt));
+  color:var(--bg);font-family:'Inter',sans-serif;
+  font-size:15px;font-weight:600;border:none;
+  border-radius:10px;cursor:pointer;transition:all .2s;
+  box-shadow:0 4px 20px rgba(44,191,174,0.25);
+}
+.lock-btn:hover{transform:translateY(-1px);}
+@keyframes shakeLock{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+
+/* ══ APP LAYOUT ══ */
+#app{display:none;height:100vh;display:flex;flex-direction:column;}
+body.locked #app{display:none!important;}
+body.locked #lockScreen{display:flex!important;}
+
+/* ══ HEADER ══ */
+.header{
+  background:rgba(13,17,23,0.95);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;height:64px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.header-logo{display:flex;align-items:center;gap:12px;}
+.header-logo img{height:38px;object-fit:contain;}
+.header-title{
+  font-family:'Playfair Display',serif;
+  font-size:18px;font-weight:700;color:var(--white);
+}
+.header-title span{color:var(--teal);font-style:italic;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.sync-badge{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:50px;padding:6px 12px;
+  font-size:11px;font-weight:600;color:var(--gray);
+}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--gray-lt);}
+.sync-dot.online{background:var(--teal);box-shadow:0 0 6px rgba(44,191,174,0.5);}
+.sync-dot.offline{background:var(--red);}
+.btn-logout{
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--gray);font-size:12px;font-weight:500;
+  padding:7px 14px;border-radius:6px;cursor:pointer;
+  transition:all .2s;
+}
+.btn-logout:hover{color:var(--red);border-color:rgba(224,85,85,0.3);}
+
+/* ══ TABS ══ */
+.tabs{
+  display:flex;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.tab-btn{
+  flex:1;padding:14px;
+  background:none;border:none;
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:500;
+  color:var(--gray);cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);}
+.tab-btn:hover:not(.active){color:var(--text);}
+.tab-count{
+  background:var(--teal);color:var(--bg);
+  font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:50px;
+  min-width:20px;text-align:center;
+}
+.tab-count.zero{background:var(--gray-lt);}
+
+/* ══ CONTENT ══ */
+.content{flex:1;overflow-y:auto;padding:24px;}
+.screen{display:none;}
+.screen.active{display:block;}
+
+/* ══ STATS ROW ══ */
+.stats-row{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:12px;margin-bottom:24px;
+}
+.stat-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:12px;padding:20px;
+  display:flex;flex-direction:column;gap:4px;
+}
+.stat-card-num{
+  font-family:'Playfair Display',serif;
+  font-size:32px;font-weight:700;color:var(--teal-lt);
+}
+.stat-card-label{font-size:11px;color:var(--gray);letter-spacing:.5px;text-transform:uppercase;}
+
+/* ══ FILTER BAR ══ */
+.filter-bar{
+  display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;
+}
+.filter-input{
+  flex:1;min-width:200px;
+  background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:8px;padding:10px 14px;
+  color:var(--text);font-family:'Inter',sans-serif;font-size:13px;
+  outline:none;transition:border-color .2s;
+}
+.filter-input:focus{border-color:var(--teal);}
+.filter-input::placeholder{color:var(--gray-lt);}
+.filter-select{
+  background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:8px;padding:10px 14px;
+  color:var(--text);font-family:'Inter',sans-serif;font-size:13px;
+  outline:none;cursor:pointer;
+}
+.filter-select option{background:var(--bg2);}
+.btn-refresh{
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--teal);padding:10px 16px;border-radius:8px;
+  font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;
+  white-space:nowrap;
+}
+.btn-refresh:hover{background:rgba(44,191,174,0.1);}
+
+/* ══ BOOKING CARDS ══ */
+.bookings-list{display:flex;flex-direction:column;gap:12px;}
+.booking-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:14px;padding:20px;
+  transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.booking-card::before{
+  content:'';position:absolute;top:0;left:0;bottom:0;width:3px;
+  background:var(--border);transition:background .2s;
+}
+.booking-card.status-new::before{background:var(--gold);}
+.booking-card.status-confirmed::before{background:var(--teal);}
+.booking-card.status-done::before{background:var(--gray-lt);}
+.booking-card.status-cancelled::before{background:var(--red);}
+.booking-card:hover{border-color:rgba(44,191,174,0.2);transform:translateY(-1px);}
+
+.bc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.bc-name{
+  font-family:'Playfair Display',serif;
+  font-size:19px;font-weight:700;color:var(--white);
+  margin-bottom:2px;
+}
+.bc-service{font-size:12px;color:var(--teal-lt);font-weight:600;letter-spacing:.3px;}
+.bc-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.badge{
+  font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  padding:3px 10px;border-radius:50px;
+}
+.badge-new{background:rgba(200,164,93,0.15);color:var(--gold-lt);border:1px solid rgba(200,164,93,0.25);}
+.badge-confirmed{background:rgba(44,191,174,0.12);color:var(--teal-lt);border:1px solid rgba(44,191,174,0.25);}
+.badge-done{background:rgba(90,99,112,0.2);color:var(--gray);border:1px solid rgba(90,99,112,0.3);}
+.badge-cancelled{background:rgba(224,85,85,0.12);color:var(--red);border:1px solid rgba(224,85,85,0.2);}
+.badge-web{background:rgba(30,58,95,0.3);color:#7BAFD4;border:1px solid rgba(123,175,212,0.2);}
+.badge-manual{background:rgba(44,191,174,0.08);color:var(--gray);border:1px solid var(--border);}
+
+.bc-info{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:10px;margin-bottom:16px;
+}
+.bc-info-item{display:flex;flex-direction:column;gap:2px;}
+.bc-info-label{font-size:10px;color:var(--gray-lt);letter-spacing:.5px;text-transform:uppercase;}
+.bc-info-val{font-size:13px;color:var(--text);font-weight:500;}
+.bc-info-val a{color:var(--teal-lt);text-decoration:none;}
+.bc-info-val a:hover{text-decoration:underline;}
+
+.bc-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.bc-btn{
+  padding:7px 14px;border-radius:6px;border:1px solid;
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .15s;
+}
+.bc-btn-confirm{
+  background:rgba(44,191,174,0.1);color:var(--teal-lt);
+  border-color:rgba(44,191,174,0.25);
+}
+.bc-btn-confirm:hover{background:rgba(44,191,174,0.2);}
+.bc-btn-done{
+  background:rgba(90,99,112,0.1);color:var(--gray);
+  border-color:rgba(90,99,112,0.2);
+}
+.bc-btn-done:hover{background:rgba(90,99,112,0.2);}
+.bc-btn-call{
+  background:rgba(200,164,93,0.1);color:var(--gold-lt);
+  border-color:rgba(200,164,93,0.2);
+  text-decoration:none;display:inline-flex;align-items:center;gap:5px;
+}
+.bc-btn-call:hover{background:rgba(200,164,93,0.2);}
+.bc-btn-wa{
+  background:rgba(37,211,102,0.1);color:#4ADE80;
+  border-color:rgba(37,211,102,0.2);
+  text-decoration:none;display:inline-flex;align-items:center;gap:5px;
+}
+.bc-btn-wa:hover{background:rgba(37,211,102,0.2);}
+.bc-btn-del{
+  background:rgba(224,85,85,0.08);color:var(--red);
+  border-color:rgba(224,85,85,0.15);
+  margin-right:auto;
+}
+.bc-btn-del:hover{background:rgba(224,85,85,0.15);}
+
+.bc-time{font-size:11px;color:var(--gray-lt);margin-top:2px;}
+
+/* ══ ADD FORM ══ */
+.add-form-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:14px;padding:28px;margin-bottom:24px;
+}
+.add-form-title{
+  font-family:'Playfair Display',serif;
+  font-size:20px;font-weight:700;color:var(--white);
+  margin-bottom:20px;
+}
+.add-form-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;
+}
+.f-field{display:flex;flex-direction:column;gap:6px;}
+.f-field label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--teal);}
+.f-field input,.f-field select{
+  background:var(--bg3);border:1.5px solid var(--border);
+  border-radius:8px;padding:11px 13px;
+  color:var(--text);font-family:'Inter',sans-serif;font-size:13px;
+  outline:none;transition:border-color .2s;
+}
+.f-field input:focus,.f-field select:focus{border-color:var(--teal);}
+.f-field input::placeholder{color:var(--gray-lt);}
+.f-field select option{background:var(--bg2);}
+.btn-add-client{
+  width:100%;padding:13px;
+  background:linear-gradient(135deg,var(--gold),var(--gold-lt));
+  color:var(--bg);font-family:'Inter',sans-serif;
+  font-size:14px;font-weight:700;border:none;
+  border-radius:8px;cursor:pointer;transition:all .2s;
+  box-shadow:0 4px 16px rgba(200,164,93,0.25);
+}
+.btn-add-client:hover{transform:translateY(-1px);}
+
+/* ══ EMPTY STATE ══ */
+.empty-state{
+  text-align:center;padding:60px 24px;
+  color:var(--gray);
+}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.5;}
+.empty-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.empty-sub{font-size:13px;line-height:1.6;}
+
+/* ══ TOAST ══ */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:10px;padding:12px 20px;
+  font-size:13px;font-weight:500;color:var(--text);
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  z-index:1000;white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:700px){
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .add-form-grid{grid-template-columns:1fr;}
+  .bc-info{grid-template-columns:1fr 1fr;}
+  .header-title{font-size:15px;}
+  .content{padding:16px;}
+  .tab-btn{font-size:11px;padding:12px 8px;}
+}
+</style>
+</head>
+<body class="locked">
+
+<!-- ══ LOCK SCREEN ══ -->
+<div id="lockScreen">
+  <img class="lock-logo" src="logo.jpg" alt="BodyCare">
+  <div>
+    <div class="lock-title">BodyCare Alger</div>
+    <div class="lock-sub" style="margin-top:4px;">Gestion des Réservations</div>
+  </div>
+  <div class="lock-form">
+    <input type="password" class="lock-input" id="lockInput" placeholder="Mot de passe"
+      onkeydown="if(event.key==='Enter') checkPass()">
+    <div class="lock-err" id="lockErr">Mot de passe incorrect</div>
+    <button class="lock-btn" onclick="checkPass()">Connexion</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">
+      
+      <div class="header-title">Body<span>Care</span></div>
+    </div>
+    <div class="header-right">
+      <div class="sync-badge">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">Connexion...</span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('dashboard',this)">
+      Tableau de bord <span class="tab-count zero" id="tab-new-count">0</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('all',this)">
+      Toutes <span class="tab-count zero" id="tab-all-count">0</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('add',this)">
+      + Ajouter
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div id="screen-dashboard" class="screen active">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-card-num" id="stat-new">0</div>
+          <div class="stat-card-label">Nouvelles</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="stat-confirmed">0</div>
+          <div class="stat-card-label">Confirmées</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="stat-done">0</div>
+          <div class="stat-card-label">Terminées</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="stat-total">0</div>
+          <div class="stat-card-label">Total</div>
+        </div>
+      </div>
+      <div class="bookings-list" id="list-dashboard"></div>
+    </div>
+
+    <!-- ALL -->
+    <div id="screen-all" class="screen">
+      <div class="filter-bar">
+        <input class="filter-input" id="search-input" placeholder="Rechercher par nom ou téléphone..." oninput="renderAll()">
+        <select class="filter-select" id="filter-status" onchange="renderAll()">
+          <option value="">Tous les statuts</option>
+          <option value="new">Nouvelles</option>
+          <option value="confirmed">Confirmées</option>
+          <option value="done">Terminées</option>
+          <option value="cancelled">Annulées</option>
+        </select>
+        <button class="btn-refresh" onclick="loadData()">Actualiser</button>
+      </div>
+      <div class="bookings-list" id="list-all"></div>
+    </div>
+
+    <!-- ADD -->
+    <div id="screen-add" class="screen">
+      <div class="add-form-card">
+        <div class="add-form-title">Ajouter un client manuellement</div>
+        <div class="add-form-grid">
+          <div class="f-field">
+            <label>Nom complet</label>
+            <input type="text" id="add-name" placeholder="Ex: Ahmed Benali">
+          </div>
+          <div class="f-field">
+            <label>Téléphone</label>
+            <input type="tel" id="add-phone" placeholder="06XX XX XX XX">
+          </div>
+          <div class="f-field">
+            <label>Service</label>
+            <select id="add-service">
+              <option value="">Choisir...</option>
+              <optgroup label="Massage">
+                <option>Massage relaxant</option>
+                <option>Massage médical</option>
+                <option>Massage au feu</option>
+                <option>Houbi</option>
+              </optgroup>
+              <optgroup label="Soins du visage">
+                <option>Nettoyage de peau</option>
+                <option>Réduction des rides</option>
+                <option>Blanchiment de la peau</option>
+              </optgroup>
+              <optgroup label="Esthétique">
+                <option>Épilation</option>
+                <option>Brushing</option>
+              </optgroup>
+              <optgroup label="Podologie">
+                <option>Soin podologique</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="f-field">
+            <label>Date du RDV</label>
+            <input type="date" id="add-date">
+          </div>
+          <div class="f-field">
+            <label>Heure</label>
+            <select id="add-time">
+              <option value="">Choisir...</option>
+              <option>18:30</option><option>19:00</option><option>19:30</option>
+              <option>20:00</option><option>20:30</option><option>21:00</option>
+              <option>21:30</option><option>22:00</option>
+            </select>
+          </div>
+          <div class="f-field">
+            <label>Note (optionnel)</label>
+            <input type="text" id="add-note" placeholder="Remarques...">
+          </div>
+        </div>
+        <button class="btn-add-client" onclick="addManual()">Ajouter le client</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// ══ CONSTANTS ══
+const PASS = 'bodycare2018';
+const SESS = 'bc_admin_unlocked';
+const DB_PATH = 'bodycare_alger/bookings';
+
+// ══ STATE ══
+let db = null;
+let bookings = {}; // { id: booking }
+
+// ══ LOCK ══
+document.body.classList.add('locked');
+
+function checkPass() {
+  const val = document.getElementById('lockInput').value;
+  if (val === PASS) {
+    sessionStorage.setItem(SESS, '1');
+    unlock();
+  } else {
+    const err = document.getElementById('lockErr');
+    err.style.display = 'block';
+    const ls = document.getElementById('lockScreen');
+    ls.style.animation = 'none';
+    requestAnimationFrame(() => ls.style.animation = 'shakeLock .4s ease');
+    document.getElementById('lockInput').value = '';
+    setTimeout(() => err.style.display = 'none', 2500);
+  }
+}
+
+function unlock() {
+  document.body.classList.remove('locked');
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('app').style.flexDirection = 'column';
+  document.getElementById('app').style.height = '100vh';
+  initFirebase();
+}
+
+function logout() {
+  sessionStorage.removeItem(SESS);
+  location.reload();
+}
+
+if (sessionStorage.getItem(SESS) === '1') {
+  document.addEventListener('DOMContentLoaded', unlock);
+}
+
+// ══ FIREBASE ══
+function initFirebase() {
+  try {
+    firebase.initializeApp({
+      apiKey:            "AIzaSyCdlVz8CR23uSvOhX2WTMjWAWX4yDk3zds",
+      authDomain:        "bodycare-alger.firebaseapp.com",
+      databaseURL:       "https://bodycare-alger-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId:         "bodycare-alger",
+      storageBucket:     "bodycare-alger.firebasestorage.app",
+      messagingSenderId: "599106524056",
+      appId:             "1:599106524056:web:5f312c60f6d81d4ee591ed"
+    });
+    db = firebase.database();
+    setSyncStatus('online');
+
+    // Listen to website pending bookings
+    listenWebsite();
+    // Listen to admin bookings
+    listenBookings();
+
+    toast('Firebase connecté', 'ok');
+  } catch(e) {
+    setSyncStatus('offline');
+    toast('Erreur Firebase', 'err');
+    console.error(e);
+  }
+}
+
+function setSyncStatus(status) {
+  const dot   = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  dot.className = 'sync-dot ' + status;
+  label.textContent = status === 'online' ? 'En ligne' : 'Hors ligne';
+}
+
+// Listen to website reservations (pending_bookings)
+function listenWebsite() {
+  db.ref('barber_htm/pending_bookings').on('child_added', snap => {
+    const b = snap.val();
+    if (!b || b._bc_processed) return;
+
+    // Convert to our booking format
+    const booking = {
+      id:          snap.key,
+      name:        b.name        || 'Client',
+      phone:       b.phone       || '—',
+      service:     b.service     || '',
+      appointment: b.appointment || '',
+      date:        b.appointment || '',
+      time:        '',
+      note:        '',
+      status:      'new',
+      source:      'website',
+      createdAt:   b.createdAt   || Date.now()
+    };
+
+    // Save to our bookings path
+    db.ref(DB_PATH + '/' + snap.key).set(booking);
+    // Mark as processed
+    snap.ref.update({ _bc_processed: true });
+
+    toast('Nouvelle réservation web : ' + booking.name, 'ok');
+  });
+}
+
+// Listen to all bookings
+function listenBookings() {
+  db.ref(DB_PATH).on('value', snap => {
+    bookings = snap.val() || {};
+    renderAll();
+    renderDashboard();
+    updateCounts();
+  });
+}
+
+// ══ RENDER ══
+function renderDashboard() {
+  const list = document.getElementById('list-dashboard');
+  const arr = Object.values(bookings)
+    .filter(b => b.status === 'new' || b.status === 'confirmed')
+    .sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+
+  if (arr.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">Aucune réservation en attente</div>
+      <div class="empty-sub">Les nouvelles réservations du site apparaîtront ici automatiquement.</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = arr.map(b => bookingCard(b)).join('');
+}
+
+function renderAll() {
+  const list   = document.getElementById('list-all');
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const status = document.getElementById('filter-status').value;
+
+  let arr = Object.values(bookings)
+    .sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+
+  if (search) arr = arr.filter(b =>
+    (b.name||'').toLowerCase().includes(search) ||
+    (b.phone||'').includes(search)
+  );
+  if (status) arr = arr.filter(b => b.status === status);
+
+  if (arr.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">Aucun résultat</div>
+      <div class="empty-sub">Essayez d'autres filtres.</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = arr.map(b => bookingCard(b)).join('');
+}
+
+function bookingCard(b) {
+  const statusMap = {
+    new:       ['Nouvelle',   'badge-new'],
+    confirmed: ['Confirmée',  'badge-confirmed'],
+    done:      ['Terminée',   'badge-done'],
+    cancelled: ['Annulée',    'badge-cancelled'],
+  };
+  const [statusLabel, statusClass] = statusMap[b.status] || ['—',''];
+  const sourceLabel = b.source === 'website' ? 'Web' : 'Manuel';
+  const sourceClass = b.source === 'website' ? 'badge-web' : 'badge-manual';
+  const date = b.date || b.appointment || '—';
+  const time = b.time || '';
+  const created = b.createdAt ? new Date(b.createdAt).toLocaleString('fr-DZ') : '—';
+  const waMsg = encodeURIComponent(
+    "Bonjour " + (b.name||'') + " 👋\n\n" +
+    "Votre réservation BodyCare Alger est confirmée !\n" +
+    "Service : " + (b.service||'—') + "\n" +
+    (date !== '—' ? "Date : " + date + (time ? " à " + time : "") + "\n" : '') +
+    "\nNous vous attendons. Merci !"
+  );
+
+  return `<div class="booking-card status-${b.status}">
+    <div class="bc-top">
+      <div>
+        <div class="bc-name">${b.name||'—'}</div>
+        <div class="bc-service">${b.service||'Service non spécifié'}</div>
+      </div>
+      <div class="bc-badges">
+        <span class="badge ${statusClass}">${statusLabel}</span>
+        <span class="badge ${sourceClass}">${sourceLabel}</span>
+      </div>
+    </div>
+    <div class="bc-info">
+      <div class="bc-info-item">
+        <div class="bc-info-label">Téléphone</div>
+        <div class="bc-info-val"><a href="tel:${b.phone}">${b.phone||'—'}</a></div>
+      </div>
+      <div class="bc-info-item">
+        <div class="bc-info-label">Date du RDV</div>
+        <div class="bc-info-val">${date} ${time}</div>
+      </div>
+      <div class="bc-info-item">
+        <div class="bc-info-label">Reçu le</div>
+        <div class="bc-info-val bc-time">${created}</div>
+      </div>
+      ${b.note ? `<div class="bc-info-item">
+        <div class="bc-info-label">Note</div>
+        <div class="bc-info-val">${b.note}</div>
+      </div>` : ''}
+    </div>
+    <div class="bc-actions">
+      <button class="bc-btn bc-btn-del" onclick="deleteBooking('${b.id}')">Supprimer</button>
+      ${b.status === 'new' ? `<button class="bc-btn bc-btn-confirm" onclick="updateStatus('${b.id}','confirmed')">Confirmer</button>` : ''}
+      ${b.status !== 'done' && b.status !== 'cancelled' ? `<button class="bc-btn bc-btn-done" onclick="updateStatus('${b.id}','done')">Terminé</button>` : ''}
+      ${b.status !== 'cancelled' ? `<button class="bc-btn bc-btn-done" onclick="updateStatus('${b.id}','cancelled')">Annuler</button>` : ''}
+      <a href="tel:${b.phone}" class="bc-btn bc-btn-call">Appeler</a>
+      <a href="https://wa.me/${(b.phone||'').replace(/[^0-9]/g,'').replace(/^0/,'213')}?text=${waMsg}" target="_blank" class="bc-btn bc-btn-wa">WhatsApp</a>
+    </div>
+  </div>`;
+}
+
+function updateCounts() {
+  const arr = Object.values(bookings);
+  const nNew  = arr.filter(b => b.status === 'new').length;
+  const nConf = arr.filter(b => b.status === 'confirmed').length;
+  const nDone = arr.filter(b => b.status === 'done').length;
+
+  document.getElementById('stat-new').textContent       = nNew;
+  document.getElementById('stat-confirmed').textContent = nConf;
+  document.getElementById('stat-done').textContent      = nDone;
+  document.getElementById('stat-total').textContent     = arr.length;
+
+  const pending = nNew + nConf;
+  const tabNew  = document.getElementById('tab-new-count');
+  const tabAll  = document.getElementById('tab-all-count');
+  tabNew.textContent = pending;
+  tabNew.className   = 'tab-count' + (pending === 0 ? ' zero' : '');
+  tabAll.textContent = arr.length;
+  tabAll.className   = 'tab-count' + (arr.length === 0 ? ' zero' : '');
+}
+
+// ══ ACTIONS ══
+function updateStatus(id, status) {
+  if (!db) return;
+  db.ref(DB_PATH + '/' + id).update({ status });
+  toast('Statut mis à jour', 'ok');
+}
+
+function deleteBooking(id) {
+  if (!confirm('Supprimer cette réservation ?')) return;
+  if (!db) return;
+  db.ref(DB_PATH + '/' + id).remove();
+  toast('Réservation supprimée', '');
+}
+
+function addManual() {
+  const name    = document.getElementById('add-name').value.trim();
+  const phone   = document.getElementById('add-phone').value.trim();
+  const service = document.getElementById('add-service').value;
+  const date    = document.getElementById('add-date').value;
+  const time    = document.getElementById('add-time').value;
+  const note    = document.getElementById('add-note').value.trim();
+
+  if (!name || !phone) { toast('Nom et téléphone requis', 'err'); return; }
+  if (!db) { toast('Firebase non connecté', 'err'); return; }
+
+  const booking = {
+    id:          Date.now().toString(),
+    name, phone, service, date, time, note,
+    appointment: date + (time ? ' ' + time : ''),
+    status:      'new',
+    source:      'manual',
+    createdAt:   Date.now()
+  };
+  db.ref(DB_PATH + '/' + booking.id).set(booking);
+
+  document.getElementById('add-name').value    = '';
+  document.getElementById('add-phone').value   = '';
+  document.getElementById('add-service').value = '';
+  document.getElementById('add-date').value    = '';
+  document.getElementById('add-time').value    = '';
+  document.getElementById('add-note').value    = '';
+
+  toast('Client ajouté !', 'ok');
+  switchTab('dashboard', document.querySelector('.tab-btn'));
+}
+
+function loadData() {
+  if (db) {
+    db.ref(DB_PATH).once('value', snap => {
+      bookings = snap.val() || {};
+      renderAll();
+      renderDashboard();
+      updateCounts();
+      toast('Actualisé', 'ok');
+    });
+  }
+}
+
+// ══ UI ══
+function switchTab(name, el) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  el.classList.add('active');
+}
+
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast show';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
